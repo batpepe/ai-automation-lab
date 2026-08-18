@@ -21,6 +21,7 @@ from opsagent.n8n.sync import (
     diff_workflows,
     export_workflows,
     import_workflows,
+    validate_directory,
 )
 from opsagent.observability.logging import configure_logging
 
@@ -95,6 +96,23 @@ def n8n_export() -> None:
     for file_name in sorted(result.written):
         typer.echo(f"wrote {settings.workflows_dir / file_name}")
     typer.echo(f"{len(result.written)} workflow(s) exported")
+
+
+@n8n_app.command("validate")
+def n8n_validate() -> None:
+    """Check the committed workflows without contacting an instance.
+
+    Needs no API key and no cluster, which is what lets it run on a pull
+    request. Exits non-zero when something would be rejected at import time.
+    """
+    settings = get_settings()
+    problems = validate_directory(settings.workflows_dir)
+
+    for problem in problems:
+        typer.echo(problem)
+    if problems:
+        raise typer.Exit(code=1)
+    typer.echo("workflows are valid")
 
 
 @n8n_app.command("diff")

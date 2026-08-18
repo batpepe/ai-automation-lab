@@ -52,3 +52,11 @@ jobs:
       # that the repository runs standalone has quietly stopped being true.
       - name: Test
         run: uv run pytest
+
+      # The committed workflows are the source of truth for the n8n instance, so
+      # they are checked like code. This needs no API key: it catches a
+      # hand-edited file that kept a read-only field, a missing required field,
+      # and a manifest that has drifted from the files beside it, all of which
+      # would otherwise surface as a 400 during a deploy.
+      - name: Validate n8n workflows
+        run: uv run opsagent n8n validate

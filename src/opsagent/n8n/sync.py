@@ -161,6 +161,59 @@ def read_workflow_file(directory: Path, file_name: str) -> JsonDict:
     return decoded
 
 
+def validate_directory(directory: Path) -> list[str]:
+    """Check the committed workflows without contacting an instance.
+
+    This is the CI gate. It runs on a pull request, where there is no cluster
+    and no API key, and it catches the mistakes that would otherwise surface as
+    a 400 during a deploy: a hand-edited file that kept a read-only field, a
+    workflow missing a required one, or a manifest that has drifted from the
+    files beside it.
+
+    Returns:
+        Human-readable problems, empty when the directory is sound.
+    """
+    problems: list[str] = []
+    manifest = load_manifest(directory)
+    listed = {entry.file for entry in manifest.entries}
+    on_disk = {path.name for path in directory.glob("*.json")}
+
+    problems.extend(
+        f"{name} is in the manifest but not on disk" for name in sorted(listed - on_disk)
+    )
+    problems.extend(
+        f"{name} is on disk but not in the manifest" for name in sorted(on_disk - listed)
+    )
+
+    for entry in sorted(manifest.entries, key=lambda item: item.file):
+        if entry.file not in on_disk:
+            continue
+        raw = (directory / entry.file).read_text(encoding="utf-8")
+        try:
+            parsed = json.loads(raw)
+        except json.JSONDecodeError as error:
+            problems.append(f"{entry.file} is not valid JSON: {error}")
+            continue
+        try:
+            payload = to_committed_payload(parsed)
+        except SyncError as error:
+            problems.append(f"{entry.file}: {error}")
+            continue
+        if str(parsed.get("name", "")) != entry.name:
+            problems.append(
+                f"{entry.file} is named {parsed.get('name')!r}, manifest says {entry.name!r}"
+            )
+        # Canonical form also catches read-only fields: they are stripped by
+        # to_committed_payload, so a file that kept one no longer round-trips.
+        if raw != render_workflow_file(payload):
+            problems.append(
+                f"{entry.file} is not in canonical form; re-run `opsagent n8n export` "
+                "rather than hand-editing, or the import will be rejected"
+            )
+
+    return problems
+
+
 async def export_workflows(client: N8nClient, directory: Path) -> ExportResult:
     """Write every workflow in the instance to `directory` and rebuild the manifest."""
     directory.mkdir(parents=True, exist_ok=True)
