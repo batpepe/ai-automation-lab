@@ -1,0 +1,26 @@
+# Copy this file into the platform repository at
+#   k8s-infrastructure/argocd-apps/ai-automation-lab.yaml
+#
+# This is the entire platform-side footprint of the lab: one Application that
+# points at deploy/argocd/ in the lab repository, which holds the child
+# Applications for n8n and later the agent. The platform repository gains one
+# file instead of one file per component, and everything else stays reviewable
+# in the repository that owns it.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ai-automation-lab
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/batpepe/ai-automation-lab
+    targetRevision: HEAD
+    path: deploy/argocd
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

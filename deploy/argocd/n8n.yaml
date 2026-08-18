@@ -1,0 +1,127 @@
+# n8n as a GitOps workload.
+#
+# Two things here differ from every other Helm app in the platform and are
+# deliberate. The chart is pulled from an OCI registry, because the 8gears chart
+# moved there and the old HTTP repository now returns 404; ArgoCD v3.4 resolves
+# public OCI charts with no repository secret, and the repoURL carries no
+# oci:// prefix. And values are inlined rather than kept in a values file,
+# which is the pattern monitoring-stack.yaml already established.
+#
+# Chart 2.0.1 carries n8n 1.122.4. Both were read from the registry on
+# 2026-08-18, not recalled.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: n8n
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: 8gears.container-registry.com/library
+    chart: n8n
+    targetRevision: 2.0.1
+    helm:
+      releaseName: n8n
+      values: |
+        image:
+          # Pinned rather than floating with the chart's appVersion, so an
+          # upgrade is a reviewable commit rather than a surprise on resync.
+          tag: "1.122.4"
+
+        ingress:
+          enabled: true
+          className: traefik
+          hosts:
+            - host: n8n.batpepe.online
+              paths:
+                - path: /
+                  pathType: Prefix
+
+        main:
+          # Everything non-secret. The chart turns this nesting into env vars,
+          # so db.type becomes DB_TYPE.
+          config:
+            db:
+              type: postgresdb
+              postgresdb:
+                host: postgres-service.apps.svc
+                port: 5432
+                database: n8n
+                user: n8n
+            executions:
+              # The shared Postgres volume is 1Gi. Without pruning, execution
+              # history fills it and takes the platform's other databases down
+              # with it, so this is on from the first deploy rather than after
+              # the first incident.
+              data:
+                prune: true
+                maxAge: 168
+                pruneMaxCount: 5000
+            generic:
+              timezone: Europe/Kyiv
+            n8n:
+              # Behind Cloudflare Access, but n8n still needs to know its own
+              # public address to build webhook URLs correctly.
+              host: n8n.batpepe.online
+              protocol: https
+              port: 5678
+
+          # Secrets are never values. They arrive as environment variables from
+          # a Secret that the sealed-secrets controller decrypts in-cluster.
+          extraEnv:
+            DB_POSTGRESDB_PASSWORD:
+              valueFrom:
+                secretKeyRef:
+                  name: n8n-secret
+                  key: db-password
+            N8N_ENCRYPTION_KEY:
+              valueFrom:
+                secretKeyRef:
+                  name: n8n-secret
+                  key: encryption-key
+            WEBHOOK_URL:
+              valueFrom:
+                configMapKeyRef:
+                  name: n8n-runtime
+                  key: webhook-url
+
+          persistence:
+            enabled: true
+            type: dynamic
+            size: 1Gi
+            accessModes:
+              - ReadWriteOnce
+
+          # ReadWriteOnce on a single node: two pods can never mount the volume
+          # at once, so a rolling update would deadlock. The chart already
+          # defaults to Recreate; stated here so the reason is on the page.
+          deploymentStrategy:
+            type: Recreate
+
+          resources:
+            requests:
+              cpu: 100m
+              memory: 320Mi
+            limits:
+              cpu: 1000m
+              memory: 768Mi
+
+        # Queue mode needs Valkey and a second deployment. A single node running
+        # one investigation at a time does not, and the memory is better spent
+        # on the agent.
+        worker:
+          enabled: false
+        webhook:
+          enabled: false
+        valkey:
+          enabled: false
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ai-lab
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

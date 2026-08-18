@@ -1,0 +1,97 @@
+# Creates the n8n database and its own login role.
+#
+# Every other application in this cluster shares the `devops` superuser. That is
+# a platform roadmap item, and this lab is the first workload not to add to the
+# problem: n8n gets a role that owns exactly one database and nothing else.
+#
+# The job runs in `apps` rather than `ai-lab` because Kubernetes secrets are
+# namespaced and the Postgres admin credential lives there. That is also why the
+# n8n password is sealed twice, once per namespace: `n8n-db-bootstrap` here for
+# the job, and `n8n-secret` in `ai-lab` for n8n itself. Sealing the superuser
+# credential into a second namespace instead would be the worse trade.
+#
+# PostSync so the sealed secrets it reads are already decrypted, and
+# BeforeHookCreation so a rerun replaces the previous job rather than failing on
+# an immutable object.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: n8n-db-bootstrap
+  namespace: apps
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 4
+  ttlSecondsAfterFinished: 600
+  template:
+    metadata:
+      labels:
+        app: n8n-db-bootstrap
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: psql
+          image: postgres:15-alpine
+          env:
+            - name: PGHOST
+              value: postgres-service
+            - name: PGPORT
+              value: "5432"
+            - name: PGDATABASE
+              value: postgres
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_USER
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
+            - name: N8N_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: n8n-db-bootstrap
+                  key: db-password
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -eu
+
+              # Idempotent by construction: the job reruns on every sync of this
+              # application, so it must converge rather than fail the second time.
+              # :'pw' is psql's quoting operator, which keeps the password out of
+              # the shell's hands and out of the process list.
+              psql -v ON_ERROR_STOP=1 -v pw="$N8N_DB_PASSWORD" <<'SQL'
+              DO $$
+              BEGIN
+                IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'n8n') THEN
+                  CREATE ROLE n8n LOGIN PASSWORD :'pw';
+                ELSE
+                  ALTER ROLE n8n LOGIN PASSWORD :'pw';
+                END IF;
+              END
+              $$;
+              SQL
+
+              # CREATE DATABASE cannot run inside a transaction block, so it
+              # cannot live in the DO above.
+              if ! psql -tAc "SELECT 1 FROM pg_database WHERE datname = 'n8n'" | grep -q 1; then
+                psql -v ON_ERROR_STOP=1 -c 'CREATE DATABASE n8n OWNER n8n'
+              fi
+
+              # n8n creates its own tables on first start; it needs the schema,
+              # not the whole instance.
+              psql -v ON_ERROR_STOP=1 -d n8n -c 'GRANT ALL ON SCHEMA public TO n8n'
+
+              echo "n8n database and role are present"
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi

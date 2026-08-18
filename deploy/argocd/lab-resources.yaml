@@ -1,0 +1,23 @@
+# The lab's own manifests: the namespace, the database bootstrap job and the
+# sealed secrets. Kept as a separate Application from the n8n chart so a chart
+# upgrade and a change to the lab's own resources are independent operations.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ai-lab-resources
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/batpepe/ai-automation-lab
+    targetRevision: HEAD
+    path: deploy/manifests
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ai-lab
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

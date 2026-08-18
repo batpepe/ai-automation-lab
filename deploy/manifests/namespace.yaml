@@ -1,0 +1,23 @@
+# n8n and the agent share one namespace so that RBAC, secrets and the
+# NetworkPolicy that arrives in a later phase all describe one blast radius.
+# The platform's habit is that first-party workloads live in `apps`; this
+# deviates on purpose, because these manifests come from a different repository
+# and form a single system that should be isolated together.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ai-lab
+  labels:
+    app: ai-automation-lab
+---
+# Values that are not secret but do vary by environment. Kept out of the chart
+# values so that changing the public hostname does not mean editing an
+# Application in the platform repository.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: n8n-runtime
+  namespace: ai-lab
+data:
+  # Trailing slash matters: n8n concatenates the webhook path onto this.
+  webhook-url: "https://n8n.batpepe.online/"
