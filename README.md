@@ -58,7 +58,7 @@ Built phase by phase, and this table is the honest state of it.
 | Phase | What it delivers | State |
 |---|---|---|
 | 0 | Repository skeleton, tooling, CI | Done |
-| 1 | n8n as a GitOps workload, workflow export/import CLI | Next |
+| 1 | n8n as a GitOps workload, workflow export/import CLI | Tooling done, deploy pending |
 | 2 | Cluster tool layer over MCP, redaction | Planned |
 | 3 | The agent: provider abstraction, guardrails, persistence | Planned |
 | 4 | Alertmanager to Telegram, resolution capture | Planned |
@@ -86,12 +86,23 @@ log_level=INFO
 log_json=None
 ```
 
-Quality gates, the same three CI runs:
+Quality gates, the same four CI runs:
 
 ```bash
 uv run ruff check .
 uv run mypy
 uv run pytest
+uv run opsagent n8n validate
+```
+
+Workflow sync needs a running instance and an API key, so it is the one thing
+that does not work from a clean clone:
+
+```bash
+opsagent n8n export    # instance to git, produces a reviewable diff
+opsagent n8n diff      # compare, exits non-zero on drift, used as a CI gate
+opsagent n8n import    # git to instance, reconciles activation state
+opsagent n8n validate  # offline checks, no API key needed
 ```
 
 ## Design decisions worth defending

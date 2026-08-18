@@ -68,9 +68,13 @@ CLI `opsagent n8n export|import|diff` (typer):
 - [ ] sealed-secrets controller deployed via GitOps; every lab secret is a `SealedSecret` in git - zero plaintext, zero manual `kubectl create secret` for this lab.
 - [ ] DB provisioning Job created `n8n` database + role (non-superuser) idempotently.
 - [ ] Round-trip proven: trivial workflow edited in UI → `export` → PR with reviewable JSON diff → merge → pipeline deploys → `diff` empty.
-- [ ] CI validates workflow JSON on PRs touching `workflows/`.
+- [x] CI validates workflow JSON on every run, with no API key and no cluster: `opsagent n8n validate` catches read-only fields, missing required fields, non-canonical formatting and manifest drift.
 - [ ] Platform PR merged: Application file + sealed-secrets Application + terraform (tunnel host, Access).
-- [ ] ADR-001 (topology/namespace), ADR-002 (sync path), ADR-003 (sealed-secrets scope), ADR-004 (Access for admin surfaces).
+- [x] ADR-001 (topology/namespace), ADR-002 (sync path), ADR-003 (sealed-secrets scope), ADR-004 (Access for admin surfaces).
+
+**Written and tested, waiting on a deploy:** the API client, the export/diff/import/validate tooling and 79 tests are done and green. The manifests in `deploy/` are written against verified facts (chart 2.0.1 carrying n8n 1.122.4 from the OCI registry, sealed-secrets 2.19.2, ArgoCD v3.4.2 resolving OCI charts with no repository secret) but have not been applied: every remaining item above changes the production cluster, so `deploy/README.md` carries the ordered procedure and those steps are the author's to run.
+
+**Measured during the phase:** the 8gears chart's old HTTP repository is gone (404) and the chart now ships only via OCI, which is why this is the first Application in the platform to use an OCI `repoURL`. `kubeseal` is not installed on the laptop yet, so the sealed secrets cannot be generated here.
 
 ### Phase 2 - Tool layer over MCP
 Cluster capabilities as one **ToolRegistry** (single source of truth: name, description, pydantic input/output schemas, handler). Two bindings from day one: **MCP server** (official `mcp` SDK; stdio entrypoint for Claude Code on the laptop via read-only kubeconfig context over Tailscale, and streamable-HTTP mounted in the FastAPI app for in-cluster use), and the **in-process binding** the agent loop uses later (pushback §1).
