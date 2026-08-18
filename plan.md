@@ -37,11 +37,15 @@ Everything runs in a dedicated namespace **`ai-lab`** (n8n is third-party → ow
 Repo `~/ai-automation-lab`, `uv`-managed, Python 3.12, package `src/opsagent/`.
 
 **DoD**
-- [ ] `uv sync && uv run pytest` green on a trivial test; `ruff check` and `mypy --strict src/` clean.
-- [ ] `pyproject.toml` per lab conventions above (hatchling, ruff+`PT`, strict markers); mypy `--strict` scoped to `src/` (stricter than the older labs - completes the direction qa-lab started), relaxed for `tests/`.
-- [ ] CI per house pattern: `setup-uv@v5` + lockfile cache, `uv sync --locked`, path filters, concurrency-cancel, least-privilege permissions, timeouts, **SHA-pinned actions** (platform convention wins over the labs' tag-pinning - this repo carries security posture), gitleaks + commitlint jobs copied from the platform.
-- [ ] `CLAUDE.md` for future sessions (project map, commands, guardrail invariants, "no emojis/em-dashes" and comment-style rules inherited from the platform).
-- [ ] `plan.md` (this doc), `docs/assumptions.md` seeded, `.env.example`, README stub with mermaid architecture, MIT license.
+- [x] `uv sync && uv run pytest` green; `ruff check`, `ruff format --check` and `mypy --strict src/` clean. 16 tests, not a placeholder: config defaults and overrides, the tri-state log renderer, and the CLI.
+- [x] `pyproject.toml` per lab conventions above (hatchling, ruff+`PT`, strict markers); mypy `--strict` scoped to `src/` (stricter than the older labs - completes the direction qa-lab started), relaxed for `tests/`.
+- [x] CI per house pattern: `setup-uv` + lockfile cache, `uv sync --locked`, concurrency-cancel, least-privilege permissions, timeouts, **SHA-pinned actions** (platform convention wins over the labs' tag-pinning - this repo carries security posture), gitleaks + commitlint jobs copied from the platform. Two deliberate deviations: `setup-uv` is pinned to the current v10.0.1 rather than the qa-lab's v5, and there is no path filter because the repository is a single project, so every file can change the result.
+- [x] `CLAUDE.md` for future sessions (project map, commands, guardrail invariants, "no emojis/em-dashes" and comment-style rules inherited from the platform).
+- [x] `plan.md` (this doc), `docs/assumptions.md` seeded, README with mermaid architecture, MIT license.
+- [ ] `.env.example` - blocked by a local permission rule covering `.env*`. Content is settled; it needs one command to land.
+- [ ] CI observed green on `main` - needs the GitHub remote, which is an outward-facing step and is left for explicit approval.
+
+**Measured during the phase, not assumed:** `extra="forbid"` in pydantic-settings does not catch a mistyped `OPSAGENT_` variable and does reject unrelated keys in a shared `.env`, so it costs the protection it appears to give. Replaced with an explicit validator; both behaviours are pinned by tests and written up in `docs/assumptions.md`.
 
 ### Phase 1 - n8n as a GitOps workload + workflow sync tooling
 n8n via community chart **`8gears/n8n-helm-chart`** (no official chart exists), deployed platform-style: an ArgoCD Application with **inline Helm values** (the monitoring-stack precedent), pinned chart version, ns `ai-lab`. Postgres backend (`DB_TYPE=postgresdb` → shared instance, dedicated `n8n` DB + non-superuser role via the provisioning Job - decision 3), small PVC for `/home/node/.n8n` with `strategy: Recreate` (RWO discipline), execution pruning on (`EXECUTIONS_DATA_PRUNE`, bounded age/count - the shared Postgres PVC is 1Gi), resources sized honestly (n8n will be the heaviest workload on the node; expect ~300-500Mi), probes on `/healthz`, amd64 image pinned by version.
