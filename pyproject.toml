@@ -1,0 +1,74 @@
+[project]
+name = "ai-automation-lab"
+dynamic = ["version"]
+description = "Incident triage agent for a K3s homelab: n8n as a GitOps workload, an MCP tool layer, and measured accuracy"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    # Phase 0 carries only the configuration and CLI spine. FastAPI, SQLAlchemy,
+    # the Kubernetes client and the MCP SDK land in the phase that first uses
+    # them, so the lock file always describes code that exists rather than code
+    # that is planned.
+    "pydantic>=2.9",
+    "pydantic-settings>=2.5",
+    "structlog>=24.4",
+    "typer>=0.12",
+]
+
+[project.scripts]
+opsagent = "opsagent.cli:app"
+
+# Makes `opsagent` an installed package rather than a directory that only
+# resolves when the interpreter happens to start from the project root. Without
+# it `uv run pytest` passes and `python tests/unit/test_config.py` does not,
+# because Python puts the script's directory on sys.path, not the project root.
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/opsagent"]
+
+# One source of truth for the version. Duplicating it here and in the package
+# guarantees the two drift.
+[tool.hatch.version]
+path = "src/opsagent/__init__.py"
+
+[dependency-groups]
+dev = [
+    "mypy>=1.11",
+    "pytest>=8.3",
+    "ruff>=0.6",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# --strict-markers turns a typo in a marker name into an error instead of a
+# silently ignored filter. Without it, `-m guardrail` quietly runs nothing and
+# reports success, which is the worst possible outcome for a safety suite.
+addopts = "--strict-markers --tb=short -ra"
+markers = [
+    "unit: no I/O, no network, no cluster",
+    "contract: parsing and schema behaviour against recorded payloads",
+    "guardrail: proves a safety limit holds (budget, depth, redaction, RBAC)",
+    "e2e: a full investigation against the mock provider",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+# PT is carried over from the QA lab: this repo is test-heavy by design and the
+# pytest-style rules catch fixture and parametrize mistakes that pass silently.
+select = ["E", "F", "I", "B", "UP", "SIM", "PT"]
+
+[tool.mypy]
+python_version = "3.12"
+# This agent reads production telemetry and decides what to say about it, so the
+# source tree is held to strict typing. Tests are deliberately out of scope:
+# fakes and fixtures read better without annotating every helper, and `files`
+# keeps them out rather than an override that only pretends to check them.
+strict = true
+files = ["src"]

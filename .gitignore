@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# Secrets. Only .env.example is committed, and it never holds a real value.
+.env
+*.key
+*.pem
+kubeconfig
+kubeconfig-*
+
+# Local artifacts
+evals/results/
+allure-results/
+dist/
+.DS_Store
