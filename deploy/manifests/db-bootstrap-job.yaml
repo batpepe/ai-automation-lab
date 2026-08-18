@@ -63,22 +63,23 @@ spec:
 
               # Idempotent by construction: the job reruns on every sync of this
               # application, so it must converge rather than fail the second time.
-              # :'pw' is psql's quoting operator, which keeps the password out of
-              # the shell's hands and out of the process list.
-              psql -v ON_ERROR_STOP=1 -v pw="$N8N_DB_PASSWORD" <<'SQL'
-              DO $$
-              BEGIN
-                IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'n8n') THEN
-                  CREATE ROLE n8n LOGIN PASSWORD :'pw';
-                ELSE
-                  ALTER ROLE n8n LOGIN PASSWORD :'pw';
-                END IF;
-              END
-              $$;
-              SQL
+              #
+              # The existence check is a shell branch rather than a PL/pgSQL DO
+              # block on purpose. psql does not substitute :'pw' inside a
+              # dollar-quoted body, so the password would arrive at the server
+              # as the literal text :'pw'. At the top level of -c it expands to
+              # a correctly quoted literal, and never appears in the process
+              # list or the shell's history.
+              if psql -tAc "SELECT 1 FROM pg_roles WHERE rolname = 'n8n'" | grep -q 1; then
+                psql -v ON_ERROR_STOP=1 -v pw="$N8N_DB_PASSWORD" \
+                  -c "ALTER ROLE n8n LOGIN PASSWORD :'pw'"
+              else
+                psql -v ON_ERROR_STOP=1 -v pw="$N8N_DB_PASSWORD" \
+                  -c "CREATE ROLE n8n LOGIN PASSWORD :'pw'"
+              fi
 
-              # CREATE DATABASE cannot run inside a transaction block, so it
-              # cannot live in the DO above.
+              # CREATE DATABASE cannot run inside a transaction block, which is
+              # the other reason this is shell rather than one SQL script.
               if ! psql -tAc "SELECT 1 FROM pg_database WHERE datname = 'n8n'" | grep -q 1; then
                 psql -v ON_ERROR_STOP=1 -c 'CREATE DATABASE n8n OWNER n8n'
               fi

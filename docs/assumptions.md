@@ -17,6 +17,25 @@ is therefore `extra="ignore"` plus an explicit validator that scans the
 environment for unknown `OPSAGENT_` names. If a future release changes either
 behaviour, those two tests fail and this entry needs revisiting.
 
+### The n8n chart's `config:` block mangles camelCase env var names
+Measured with `helm template` against chart 2.0.1 on 2026-08-18. The chart turns
+nested `config:` keys into environment variables by joining them with
+underscores and uppercasing each key, without splitting camelCase. So
+`executions.data.maxAge` becomes `EXECUTIONS_DATA_MAXAGE`, while n8n reads
+`EXECUTIONS_DATA_MAX_AGE`. The value would have been accepted, ignored, and the
+default 336 hours of execution history kept on a 1Gi volume shared with every
+other database in the cluster.
+
+The same block cannot express `EXECUTIONS_DATA_PRUNE_MAX_COUNT` at all, because
+`prune` would have to be both a value and a parent key. Both limits therefore
+live in the `n8n-runtime` ConfigMap and reach the container through `extraEnv`.
+
+### The chart's `extraEnv` only renders `valueFrom` entries
+Also measured, same render. An `extraEnv` entry written as a plain `value:` is
+silently dropped from the Deployment rather than rejected. Everything passed
+through `extraEnv` in `deploy/argocd/n8n.yaml` therefore references a Secret or
+a ConfigMap, which is where the values belong anyway.
+
 ## Platform facts this project builds on
 
 Read from `devops-homelab-k3s-hybrid-cloud` at main on 2026-08-18, not from a

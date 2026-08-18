@@ -53,10 +53,14 @@ spec:
               # history fills it and takes the platform's other databases down
               # with it, so this is on from the first deploy rather than after
               # the first incident.
+              #
+              # Only the switch lives here. The two limits are set through the
+              # n8n-runtime ConfigMap below, because this block cannot express
+              # their env var names: it uppercases each nested key without
+              # splitting camelCase, and `prune` cannot be both a value and a
+              # parent. See deploy/manifests/namespace.yaml.
               data:
                 prune: true
-                maxAge: 168
-                pruneMaxCount: 5000
             generic:
               timezone: Europe/Kyiv
             n8n:
@@ -84,6 +88,16 @@ spec:
                 configMapKeyRef:
                   name: n8n-runtime
                   key: webhook-url
+            EXECUTIONS_DATA_MAX_AGE:
+              valueFrom:
+                configMapKeyRef:
+                  name: n8n-runtime
+                  key: executions-max-age
+            EXECUTIONS_DATA_PRUNE_MAX_COUNT:
+              valueFrom:
+                configMapKeyRef:
+                  name: n8n-runtime
+                  key: executions-prune-max-count
 
           persistence:
             enabled: true

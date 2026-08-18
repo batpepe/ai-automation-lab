@@ -21,3 +21,12 @@ metadata:
 data:
   # Trailing slash matters: n8n concatenates the webhook path onto this.
   webhook-url: "https://n8n.batpepe.online/"
+
+  # Execution retention. These two live here rather than in the chart's config:
+  # block because that block builds env var names by uppercasing each nested
+  # key, which turns maxAge into EXECUTIONS_DATA_MAXAGE. n8n reads
+  # EXECUTIONS_DATA_MAX_AGE, so the value would have been silently ignored and
+  # the default 336 hours kept, on a 1Gi volume shared with every other
+  # database in the cluster. Verified with `helm template` rather than assumed.
+  executions-max-age: "168"
+  executions-prune-max-count: "5000"
