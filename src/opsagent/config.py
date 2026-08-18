@@ -11,8 +11,9 @@ from __future__ import annotations
 import os
 from enum import StrEnum
 from functools import lru_cache
+from pathlib import Path
 
-from pydantic import model_validator
+from pydantic import SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ENV_PREFIX = "OPSAGENT_"
@@ -50,6 +51,14 @@ class Settings(BaseSettings):
     # Left unset, log rendering follows the environment. JSON on a terminal is
     # unreadable; console formatting in the cluster makes Loki queries guesswork.
     log_json: bool | None = None
+
+    # The in-cluster service address. The n8n API is never published through the
+    # tunnel, so workflow sync runs inside the cluster and reaches it here.
+    n8n_url: str = "http://n8n.ai-lab.svc:5678"
+    # SecretStr so that `show-config`, logs and tracebacks print a mask rather
+    # than a working API key.
+    n8n_api_key: SecretStr | None = None
+    workflows_dir: Path = Path("workflows")
 
     @model_validator(mode="after")
     def _reject_unknown_prefixed_variables(self) -> Settings:
