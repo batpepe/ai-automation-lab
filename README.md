@@ -61,7 +61,7 @@ Built phase by phase, and this table is the honest state of it.
 |---|---|---|
 | 0 | Repository skeleton, tooling, CI | Done |
 | 1 | n8n as a GitOps workload, workflow export/import CLI | Tooling done, deploy pending |
-| 2 | Cluster tool layer over MCP, redaction | Planned |
+| 2 | Cluster tool layer over MCP, redaction | Tooling done, live check pending |
 | 3 | The agent: provider abstraction, guardrails, persistence | Planned |
 | 4 | Alertmanager to Telegram, resolution capture | Planned |
 | 5 | Metrics, Grafana dashboard, report page, runbook | Planned |
@@ -107,6 +107,29 @@ opsagent n8n import    # git to instance, reconciles activation state
 opsagent n8n validate  # offline checks, no API key needed
 ```
 
+## Driving the tools by hand
+
+The tool layer is an MCP server before it is an agent's dependency, so the tools
+can be used from an editor session against the real cluster. Register it:
+
+```json
+{
+  "mcpServers": {
+    "opsagent": {
+      "command": "uv",
+      "args": ["run", "--directory", "/path/to/ai-automation-lab", "python", "-m", "opsagent.mcp"],
+      "env": { "OPSAGENT_LOKI_URL": "http://localhost:3100" }
+    }
+  }
+}
+```
+
+It reads whatever kubeconfig context is active, so point it at a read-only one.
+The six tools are `get_pod_status`, `get_events`, `query_logs`, `query_metrics`,
+`get_recent_deploys` and `get_runbook`. Every result carries how many values
+were redacted and whether it was truncated, so a caller can never mistake a
+partial answer for a complete one.
+
 ## Design decisions worth defending
 
 **The repository runs with zero API keys and zero spend.** A reviewer who
@@ -117,6 +140,12 @@ provider abstraction to exist from the start rather than being retrofitted.
 the agent means every future caller of the tool layer has to remember to redact.
 Putting it in the tools means it is impossible to forget, and it is the most
 heavily tested code in the repository.
+
+**Redaction preserves identity instead of erasing it.** The same address always
+becomes the same `<ip-1>`, so the model can still reason that the pod at
+`<ip-1>` cannot reach `<ip-2>` and correlate that across a log excerpt and an
+event. Masking everything to one `<redacted>` would destroy exactly the
+structure a root cause is made of.
 
 **The agent's ServiceAccount cannot read secrets and cannot write anything.**
 The fault injection harness in phase 6 needs write access to break things on

@@ -84,11 +84,13 @@ The **redaction layer lands here**, not in phase 3 - it is a choke point on ever
 Backends (verified endpoints): K8s API (official client, in-cluster SA or kubeconfig), Loki `http://loki.monitoring.svc:3100/loki/api/v1/*`, Prometheus `http://monitoring-kube-prometheus-prometheus.monitoring.svc:9090/api/v1/*`. `get_recent_deploys` reads **ArgoCD Application CRs directly** (`applications.argoproj.io`, `status.history[]`/`operationState`) - read-only k8s RBAC instead of provisioning ArgoCD API tokens (ArgoCD isn't GitOps-managed there; adding accounts would mean hand-editing `argocd-cm` - avoided), plus recent commits from the public platform repo via unauthenticated GitHub API.
 
 **DoD**
-- [ ] Six tools implemented and unit-tested against a faked K8s API and faked Loki/Prometheus HTTP (respx) - zero network in CI.
-- [ ] Redaction suite is the heaviest in the repo (real-shaped fixtures with planted secrets/IPs/emails/hostnames; property-style cases).
-- [ ] Read-only RBAC written and documented: ServiceAccount + ClusterRole (get/list/watch on pods, events, deployments, replicasets, nodes, pvcs; `applications.argoproj.io`; **no secrets, no write verbs**) - the "what it can touch and why" table in `docs/threat-model.md`.
-- [ ] MCP server driven from the author's Claude Code session against the real cluster - demonstrated before any agent exists.
-- [ ] MCP↔in-process parity test (same registry → same schemas/results).
+- [x] Six tools implemented and unit-tested against a faked K8s API and faked Loki/Prometheus HTTP (respx) - zero network in CI.
+- [x] Redaction suite is the heaviest in the repo: 59 tests, split between secrets that must not survive and diagnostic detail that must.
+- [x] Read-only RBAC written and documented, and pinned by a guardrail test that fails on any write verb or Secret access: ServiceAccount + ClusterRole (get/list/watch on pods, events, deployments, replicasets, nodes, pvcs; `applications.argoproj.io`; **no secrets, no write verbs**) - the "what it can touch and why" table in `docs/threat-model.md`.
+- [ ] MCP server driven from the author's Claude Code session against the real cluster - blocked: the cluster went unreachable mid-session (Tailscale), so this is the one item awaiting a live check. The attempt was not wasted; see the finding below.
+- [x] MCP and in-process parity test: same names, same schemas, same descriptions, same results.
+
+**Measured during the phase:** `asyncio.timeout` cancels an awaiting task but cannot cancel the worker thread beneath it, so the synchronous Kubernetes client kept a socket open well past its budget when the cluster became unreachable. The blocking call now carries its own `_request_timeout` and a test pins it. Also measured: the n8n-style trap of trusting a library's own escaping - a pydantic model passed to MCP as one parameter nests every argument under `params`, which would have made the MCP surface and the agent surface two different tools.
 
 ### Phase 3 - The agent
 `LLMProvider` protocol; **`MockProvider` (deterministic scenario playback) is the default** everywhere including CI; `OpenAICompatProvider` behind config for the free-tier backends (decision 4; reference pricing in `providers/pricing.py` config table - never at call sites). Switching provider/model/backend is config only. Repo clones and runs end-to-end with zero API keys and zero spend.
