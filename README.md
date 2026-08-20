@@ -61,7 +61,7 @@ Built phase by phase, and this table is the honest state of it.
 |---|---|---|
 | 0 | Repository skeleton, tooling, CI | Done |
 | 1 | n8n as a GitOps workload, workflow export/import CLI | Tooling done, deploy pending |
-| 2 | Cluster tool layer over MCP, redaction | Tooling done, live check pending |
+| 2 | Cluster tool layer over MCP, redaction | Done |
 | 3 | The agent: provider abstraction, guardrails, persistence | Planned |
 | 4 | Alertmanager to Telegram, resolution capture | Planned |
 | 5 | Metrics, Grafana dashboard, report page, runbook | Planned |

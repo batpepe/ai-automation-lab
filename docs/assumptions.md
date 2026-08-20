@@ -45,6 +45,20 @@ triggered run scans the full history instead and passed cleanly across all 12
 commits. Every push after the first works normally, so the red run in the
 Actions history is that one-off and not a finding.
 
+### A bare `key` field is structural in Kubernetes, not a secret
+Measured against a live pod on 2026-08-20. Treating any field named `key` as a
+credential fired three times on one ordinary pod, and all three were false
+positives: two taint keys on tolerations and a filename in a ConfigMap
+projection. Redacting a taint key hides why a pod will not schedule, which is
+one of the fault scenarios phase 6 exists to test.
+
+`SECRET_KEY_NAMES` now matches compound forms (`api_key`, `encryption_key`) but
+not a bare `key`. A bare `key` holding a real credential is still caught by the
+value patterns. The three shapes are pinned as regression tests.
+
+This is the argument for running the tools against a real cluster before
+trusting them: the fixture list had no tolerations in it, and never would have.
+
 ### A synchronous client in a thread needs its own deadline
 Measured on 2026-08-20, when the Tailscale link to the cluster dropped during a
 live tool run. `asyncio.timeout` cancels the awaiting task but cannot cancel the

@@ -103,9 +103,19 @@ DIGEST_PREFIX = re.compile(r"(?:sha256|sha512|md5)\s*[:=]\s*$", re.IGNORECASE)
 # {"data": {"password": "aHVudGVyMg=="}}. The value carries no recognisable
 # shape, so the *key* is what gives it away. Any value under a key matching this
 # is replaced whole, whatever it contains.
+# A bare `key` is deliberately absent. In Kubernetes it is almost always
+# structural: a taint key on a toleration, a filename in a ConfigMap projection,
+# a map entry name. Redacting those hides why a pod will not schedule, which is
+# exactly the diagnosis this agent exists to make. Measured against a real pod,
+# not guessed: it fired three times on one object, all three false positives.
+# Compound forms (api_key, encryption_key) still match, and a bare `key` holding
+# a real credential is still caught by the value patterns above.
 SECRET_KEY_NAMES = re.compile(
-    r"^(?:.*[_-])?(?:password|passwd|pwd|secret|token|apikey|key|credential|credentials"
-    r"|auth|authorization|cert|certificate|privatekey)s?$",
+    r"^(?:"
+    r"(?:.*[_-])?(?:password|passwd|pwd|secret|token|apikey|credential|credentials"
+    r"|auth|authorization|cert|certificate|privatekey)s?"
+    r"|.+[_-]keys?"
+    r")$",
     re.IGNORECASE,
 )
 

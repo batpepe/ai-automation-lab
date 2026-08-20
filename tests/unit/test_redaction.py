@@ -273,3 +273,55 @@ def test_a_prompt_injection_attempt_is_left_intact_for_the_prompt_layer(
 
     assert result.value == hostile
     assert result.count == 0
+
+
+# --- Regression: shapes found on a real cluster ------------------------------
+
+
+@pytest.mark.parametrize(
+    "key",
+    [
+        # A taint key. Redacting it hides why a pod will not schedule.
+        "key",
+        # Nested the way a real pod spec nests them.
+        "operator",
+        "effect",
+    ],
+)
+def test_structural_kubernetes_keys_are_not_treated_as_secrets(
+    redactor: Redactor, key: str
+) -> None:
+    result = redactor.redact({key: "node.kubernetes.io/not-ready"})
+
+    assert result.value[key] == "node.kubernetes.io/not-ready"
+
+
+def test_a_real_toleration_survives_redaction(redactor: Redactor) -> None:
+    # Copied from a live pod. Every field here is diagnostic, none is secret.
+    toleration = {
+        "key": "node.kubernetes.io/unreachable",
+        "operator": "Exists",
+        "effect": "NoExecute",
+        "toleration_seconds": 300,
+    }
+
+    result = redactor.redact(toleration)
+
+    assert result.value == toleration
+    assert result.count == 0
+
+
+def test_a_configmap_projection_keeps_its_item_names(redactor: Redactor) -> None:
+    # Also from a live pod: the "key" here is a filename, not a credential.
+    projection = {"config_map": {"name": "kube-root-ca.crt", "items": [{"key": "ca.crt"}]}}
+
+    result = redactor.redact(projection)
+
+    assert result.value["config_map"]["items"][0]["key"] == "ca.crt"
+
+
+@pytest.mark.parametrize("key", ["api_key", "encryption-key", "privateKey", "DB_KEY"])
+def test_compound_key_names_are_still_secrets(redactor: Redactor, key: str) -> None:
+    result = redactor.redact({key: "opaque-value-here"})
+
+    assert result.value[key].startswith("<secret-")
