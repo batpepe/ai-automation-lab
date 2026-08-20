@@ -1,6 +1,6 @@
 # 3. Sealed secrets, for this lab's secrets only
 
-Date: 2026-08-18
+Date: 2026-08-20
 
 ## Status
 

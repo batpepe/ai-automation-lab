@@ -1,6 +1,6 @@
 # 2. Workflow sync runs inside the cluster, not from CI
 
-Date: 2026-08-18
+Date: 2026-08-20
 
 ## Status
 

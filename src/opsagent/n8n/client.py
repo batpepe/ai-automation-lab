@@ -1,7 +1,7 @@
 """Client for the n8n public REST API.
 
 Endpoints and schemas were read from the OpenAPI specification in n8n-io/n8n on
-2026-08-18 rather than recalled. Three facts from it shape this module:
+2026-08-20 rather than recalled. Three facts from it shape this module:
 
 - `workflowCreate` and `workflow` both set `additionalProperties: false`, so
   echoing back a field the API considers read-only is a 400, not a warning.

@@ -1,7 +1,7 @@
 # ai-automation-lab - plan.md
 
 > On approval, this document is committed verbatim as `plan.md` in the new `~/ai-automation-lab` repo (step 0.0).
-> Grounded in: exploration of `devops-homelab-k3s-hybrid-cloud` + both Python labs (2026-08-18), n8n public API OpenAPI spec, MCP Python SDK docs, current Anthropic API reference.
+> Grounded in: exploration of `devops-homelab-k3s-hybrid-cloud` + both Python labs (2026-08-20), n8n public API OpenAPI spec, MCP Python SDK docs, current Anthropic API reference.
 
 ## Context
 
@@ -271,7 +271,7 @@ class LLMProvider(Protocol):
 6. **Dedup only in n8n** puts a core guardrail in the least-testable layer. n8n dedups first (cheap), the service enforces fingerprint-window uniqueness as a DB constraint plus per-class rate limit - survives n8n bugs, restarts, replays.
 7. **1Gi shared Postgres + n8n execution history** don't mix long-term: execution pruning on from day one, and the eval phase watches DB growth. If it becomes a problem, that's a documented reason to revisit Q3.
 
-## Decisions (user-confirmed 2026-08-18)
+## Decisions (user-confirmed 2026-08-20)
 
 1. **Secrets: introduce sealed-secrets now.** Controller lands as one more Application in the platform's `argocd-apps/`; all NEW secrets of this lab (n8n encryption key, DB creds, n8n API key, provider API key) are `SealedSecret` resources in git. Existing platform secrets are untouched (their migration stays a platform roadmap item, now unblocked). ADR documents scope.
 2. **n8n UI: tunnel + Cloudflare Access.** `tunnel_hosts += "n8n"` and the account's first Zero Trust Access application + policy (email OTP / identity pin), managed in `terraform/cloudflare/` alongside the existing tunnel config. n8n's built-in owner auth stays on as the second layer. The report page ships behind the same Access app later (phase 5) - until then it stays cluster/LAN-only.
@@ -285,10 +285,10 @@ Defaulted (recorded in `docs/assumptions.md`, overridable at any review):
 
 Each phase ends with: `ruff check` + `mypy --strict src/` + `uv run pytest` green (no network in CI), GH Actions green, plus the phase's live check - P1: UI→git→pipeline round-trip, `opsagent n8n diff` empty; P2: tool calls from Claude Code against the real cluster; P3: mock e2e + one real-provider smoke; P4: pod kill → Telegram end-to-end + storm dedup; P5: dashboard live + meta-alert test-fire; P6: full eval run producing `docs/eval-report.md`. Then stop and wait for review, per working agreement.
 
-## References (fetched 2026-08-18)
+## References (fetched 2026-08-20)
 
 - n8n public API: docs.n8n.io/connect/n8n-api/ (`X-N8N-API-KEY`, `/api/v1`) + OpenAPI spec in n8n-io/n8n (endpoints verified).
 - n8n on K8s: no official chart; community `8gears/n8n-helm-chart` (maintained); n8n-io/n8n-hosting for raw-manifest examples.
 - MCP Python SDK: package `mcp`, decorator tools, stdio + streamable-HTTP, ASGI mounting - py.sdk.modelcontextprotocol.io.
 - Anthropic API: current models/pricing/structured outputs (claude-api reference, loaded via skill).
-- Platform facts: file-level exploration of `devops-homelab-k3s-hybrid-cloud` @ main, 2026-08-18.
+- Platform facts: file-level exploration of `devops-homelab-k3s-hybrid-cloud` @ main, 2026-08-20.

@@ -8,7 +8,7 @@
 # which is the pattern monitoring-stack.yaml already established.
 #
 # Chart 2.0.1 carries n8n 1.122.4. Both were read from the registry on
-# 2026-08-18, not recalled.
+# 2026-08-20, not recalled.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:

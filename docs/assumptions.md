@@ -6,7 +6,7 @@ change under a dependency upgrade. Each entry says what breaks if it is wrong.
 ## Verified by measurement
 
 ### pydantic-settings `extra="forbid"` does not catch mistyped settings
-Measured on pydantic-settings 2.15.0, 2026-08-18. `extra="forbid"` never sees a
+Measured on pydantic-settings 2.15.0, 2026-08-20. `extra="forbid"` never sees a
 variable like `OPSAGENT_LOG_LEVL`, because the environment source only offers
 names that already match a field, so the typo silently leaves the default in
 place. It does reject unrelated keys read from a `.env` file, which would make a
@@ -18,7 +18,7 @@ environment for unknown `OPSAGENT_` names. If a future release changes either
 behaviour, those two tests fail and this entry needs revisiting.
 
 ### The n8n chart's `config:` block mangles camelCase env var names
-Measured with `helm template` against chart 2.0.1 on 2026-08-18. The chart turns
+Measured with `helm template` against chart 2.0.1 on 2026-08-20. The chart turns
 nested `config:` keys into environment variables by joining them with
 underscores and uppercasing each key, without splitting camelCase. So
 `executions.data.maxAge` becomes `EXECUTIONS_DATA_MAXAGE`, while n8n reads
@@ -37,7 +37,7 @@ through `extraEnv` in `deploy/argocd/n8n.yaml` therefore references a Secret or
 a ConfigMap, which is where the values belong anyway.
 
 ### gitleaks fails on the very first push to a new repository
-Observed on the initial push, 2026-08-18. The action derives a commit range from
+Observed on the initial push, 2026-08-20. The action derives a commit range from
 the push event, which for the first commit resolves to `<first-sha>^..<head>`.
 That parent does not exist, git errors, and the action exits non-zero even
 though its own output says "no leaks found in partial scan". A manually
@@ -47,7 +47,7 @@ Actions history is that one-off and not a finding.
 
 ## Platform facts this project builds on
 
-Read from `devops-homelab-k3s-hybrid-cloud` at main on 2026-08-18, not from a
+Read from `devops-homelab-k3s-hybrid-cloud` at main on 2026-08-20, not from a
 live cluster (the API server was unreachable from the laptop at the time).
 Re-verify before phase 1 lands.
 
