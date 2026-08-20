@@ -42,8 +42,8 @@ Repo `~/ai-automation-lab`, `uv`-managed, Python 3.12, package `src/opsagent/`.
 - [x] CI per house pattern: `setup-uv` + lockfile cache, `uv sync --locked`, concurrency-cancel, least-privilege permissions, timeouts, **SHA-pinned actions** (platform convention wins over the labs' tag-pinning - this repo carries security posture), gitleaks + commitlint jobs copied from the platform. Two deliberate deviations: `setup-uv` is pinned to the current v10.0.1 rather than the qa-lab's v5, and there is no path filter because the repository is a single project, so every file can change the result.
 - [x] `CLAUDE.md` for future sessions (project map, commands, guardrail invariants, "no emojis/em-dashes" and comment-style rules inherited from the platform).
 - [x] `plan.md` (this doc), `docs/assumptions.md` seeded, README with mermaid architecture, MIT license.
-- [ ] `.env.example` - blocked by a local permission rule covering `.env*`. Content is settled; it needs one command to land.
-- [ ] CI observed green on `main` - needs the GitHub remote, which is an outward-facing step and is left for explicit approval.
+- [x] `.env.example` committed (written by the author: a local permission rule covers `.env*`, so the agent could not create it).
+- [x] CI observed green on `main` at github.com/batpepe/ai-automation-lab: lint, type check, tests and workflow validation all pass, commit messages pass commitlint, and a full-history secret scan reports no leaks across 12 commits.
 
 **Measured during the phase, not assumed:** `extra="forbid"` in pydantic-settings does not catch a mistyped `OPSAGENT_` variable and does reject unrelated keys in a shared `.env`, so it costs the protection it appears to give. Replaced with an explicit validator; both behaviours are pinned by tests and written up in `docs/assumptions.md`.
 

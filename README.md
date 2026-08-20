@@ -1,5 +1,7 @@
 # ai-automation-lab
 
+[![CI](https://github.com/batpepe/ai-automation-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/batpepe/ai-automation-lab/actions/workflows/ci.yml)
+
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white)
 ![n8n](https://img.shields.io/badge/n8n-GitOps-EA4B71?style=for-the-badge&logo=n8n&logoColor=white)
 ![MCP](https://img.shields.io/badge/MCP-tool%20layer-000000?style=for-the-badge)
