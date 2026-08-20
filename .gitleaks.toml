@@ -1,0 +1,18 @@
+# Extends the default rule set rather than replacing it, so every rule gitleaks
+# ships still applies everywhere else in the repository.
+title = "ai-automation-lab"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = """
+tests/unit/test_redaction.py is the suite that proves secrets never reach a
+model provider. To do that it plants fake credentials in realistic shapes:
+sk- keys, JWTs, connection strings, bearer tokens. gitleaks cannot tell a
+deliberate fixture from a leak, and it should not try.
+
+Scoped to that one file on purpose. A real credential pasted into any other
+test, or anywhere else in the repository, is still a failed scan.
+"""
+paths = ['''tests/unit/test_redaction\.py''']
