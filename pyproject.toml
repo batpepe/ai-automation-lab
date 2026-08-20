@@ -86,3 +86,11 @@ python_version = "3.12"
 # keeps them out rather than an override that only pretends to check them.
 strict = true
 files = ["src"]
+
+# The official Kubernetes client ships no py.typed marker and no stubs. The
+# exception is scoped to that import rather than relaxing strictness anywhere
+# else, and it is why the client is confined to one adapter class: everything
+# downstream of OfficialClientReader is fully typed against the protocol.
+[[tool.mypy.overrides]]
+module = ["kubernetes.*"]
+ignore_missing_imports = true

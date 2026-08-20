@@ -9,6 +9,7 @@ never calls is worth as much as one that does not exist.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -40,6 +41,7 @@ from opsagent.tools.runbooks import get_runbook
 
 __all__ = [
     "DEFAULT_MAX_RESULT_CHARS",
+    "build_registry_from_settings",
     "KubernetesReader",
     "LokiClient",
     "PrometheusClient",
@@ -173,3 +175,22 @@ def build_registry(
         )
     )
     return registry
+
+
+def build_registry_from_settings(settings: Any) -> ToolRegistry:
+    """Build the registry from configuration, with real cluster backends.
+
+    Kept separate from `build_registry` so that every test path constructs the
+    registry with fakes and no test can reach a cluster by accident.
+    """
+    from opsagent.tools.k8s import build_reader
+
+    return build_registry(
+        kubernetes=build_reader(
+            kubeconfig=str(settings.kubeconfig) if settings.kubeconfig else None,
+            argocd_namespace=settings.argocd_namespace,
+        ),
+        loki=LokiClient(settings.loki_url),
+        prometheus=PrometheusClient(settings.prometheus_url),
+        runbook_dir=Path(settings.runbook_dir),
+    )

@@ -247,3 +247,27 @@ async def get_events(params: EventsInput, reader: KubernetesReader) -> EventList
     if len(selected) > params.limit:
         note = f"showing {params.limit} of {len(selected)} matching events"
     return EventList(namespace=params.namespace, events=events, note=note)
+
+
+def build_reader(
+    *,
+    kubeconfig: str | None = None,
+    argocd_namespace: str = "argocd",
+) -> OfficialClientReader:
+    """Build a reader from in-cluster credentials, falling back to a kubeconfig.
+
+    In-cluster first so the deployed agent never accidentally picks up a
+    developer's admin context from a mounted file.
+    """
+    from kubernetes import client, config
+
+    try:
+        config.load_incluster_config()
+    except config.ConfigException:
+        config.load_kube_config(config_file=kubeconfig)
+
+    return OfficialClientReader(
+        client.CoreV1Api(),
+        client.CustomObjectsApi(),
+        argocd_namespace=argocd_namespace,
+    )

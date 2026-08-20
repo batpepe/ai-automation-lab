@@ -60,6 +60,16 @@ class Settings(BaseSettings):
     n8n_api_key: SecretStr | None = None
     workflows_dir: Path = Path("workflows")
 
+    # Cluster telemetry, at the in-cluster service addresses read from the
+    # platform repository. Override them to point at a port-forward when
+    # driving the tools from a laptop.
+    loki_url: str = "http://loki.monitoring.svc:3100"
+    prometheus_url: str = "http://monitoring-kube-prometheus-prometheus.monitoring.svc:9090"
+    argocd_namespace: str = "argocd"
+    runbook_dir: Path = Path("runbooks")
+    # None means in-cluster credentials first, then the default kubeconfig.
+    kubeconfig: Path | None = None
+
     @model_validator(mode="after")
     def _reject_unknown_prefixed_variables(self) -> Settings:
         """Fail on an OPSAGENT_ variable that matches no setting.
