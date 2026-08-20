@@ -1,0 +1,78 @@
+# The agent's cluster access, in full.
+#
+# Read-only is a property of this file, not a promise in a prompt. There are no
+# write verbs anywhere below and no access to Secrets, so an agent that decided
+# to delete a Deployment could not, whatever a log line talked it into.
+#
+# Secrets are the deliberate omission. The agent reads pod specs, which name the
+# secrets a workload mounts, and that is enough to diagnose a missing or
+# misnamed one. Reading their contents adds nothing to a diagnosis and would put
+# every credential in the cluster one prompt injection away from a model API.
+#
+# The fault injection harness in phase 6 needs to break things on purpose. It
+# carries its own separate credential and is never bound to this account.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: opsagent
+  namespace: ai-lab
+  labels:
+    app: opsagent
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: opsagent-read
+  labels:
+    app: opsagent
+rules:
+  # Workload state: what is running, why it stopped, what it asked for.
+  - apiGroups: [""]
+    resources:
+      - pods
+      - pods/status
+      - events
+      - nodes
+      - persistentvolumeclaims
+      - services
+      - configmaps
+    verbs: ["get", "list", "watch"]
+
+  # Controller state: a pod that never appeared is a Deployment or ReplicaSet
+  # problem, and the pod itself cannot say so.
+  - apiGroups: ["apps"]
+    resources:
+      - deployments
+      - replicasets
+      - statefulsets
+      - daemonsets
+    verbs: ["get", "list", "watch"]
+
+  # "What changed just before this broke", read from ArgoCD's own resources
+  # rather than through an ArgoCD API account.
+  - apiGroups: ["argoproj.io"]
+    resources:
+      - applications
+    verbs: ["get", "list", "watch"]
+
+  # Certificate expiry is one of the fault scenarios in phase 6, and cert-manager
+  # records it here.
+  - apiGroups: ["cert-manager.io"]
+    resources:
+      - certificates
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: opsagent-read
+  labels:
+    app: opsagent
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: opsagent-read
+subjects:
+  - kind: ServiceAccount
+    name: opsagent
+    namespace: ai-lab
