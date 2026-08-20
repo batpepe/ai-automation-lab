@@ -36,6 +36,15 @@ silently dropped from the Deployment rather than rejected. Everything passed
 through `extraEnv` in `deploy/argocd/n8n.yaml` therefore references a Secret or
 a ConfigMap, which is where the values belong anyway.
 
+### gitleaks fails on the very first push to a new repository
+Observed on the initial push, 2026-08-18. The action derives a commit range from
+the push event, which for the first commit resolves to `<first-sha>^..<head>`.
+That parent does not exist, git errors, and the action exits non-zero even
+though its own output says "no leaks found in partial scan". A manually
+triggered run scans the full history instead and passed cleanly across all 12
+commits. Every push after the first works normally, so the red run in the
+Actions history is that one-off and not a finding.
+
 ## Platform facts this project builds on
 
 Read from `devops-homelab-k3s-hybrid-cloud` at main on 2026-08-18, not from a
