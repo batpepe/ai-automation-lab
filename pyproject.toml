@@ -6,11 +6,12 @@ readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.12,<3.13"
 # Dependencies arrive with the phase that first uses them, so the lock file
-# always describes code that exists rather than code that is planned. FastAPI,
-# SQLAlchemy, the Kubernetes client and the MCP SDK are still absent for that
-# reason. httpx and PyYAML arrived with the phase 1 n8n client and its manifest.
+# always describes code that exists rather than code that is planned. FastAPI
+# and SQLAlchemy are still absent for that reason. httpx and PyYAML arrived with
+# the phase 1 n8n client, the MCP SDK with the phase 2 tool layer.
 dependencies = [
     "httpx>=0.27",
+    "mcp>=2.0",
     "pydantic>=2.9",
     "pydantic-settings>=2.5",
     "pyyaml>=6.0",
