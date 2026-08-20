@@ -45,9 +45,7 @@ def test_the_role_cannot_read_secrets(cluster_role: dict[str, Any]) -> None:
 
 
 @pytest.mark.parametrize("forbidden", ["secrets", "serviceaccounts/token", "*"])
-def test_no_rule_grants_a_dangerous_resource(
-    cluster_role: dict[str, Any], forbidden: str
-) -> None:
+def test_no_rule_grants_a_dangerous_resource(cluster_role: dict[str, Any], forbidden: str) -> None:
     resources = {resource for rule in cluster_role["rules"] for resource in rule["resources"]}
 
     assert forbidden not in resources

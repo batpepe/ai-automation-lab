@@ -69,8 +69,15 @@ class OfficialClientReader:
         self._breaker = breaker
 
     async def _call(self, func: Any, /, **kwargs: Any) -> Any:
+        # The client is synchronous, so it runs in a worker thread. asyncio's
+        # timeout cancels the await, not the thread: without a deadline on the
+        # blocking call itself, an unreachable API server leaves a thread parked
+        # on a socket for as long as the process lives. Measured, not theorised
+        # - it hung a live run when the tunnel to the cluster dropped.
+        deadline = self._policy.timeout
+
         async def attempt() -> Any:
-            return await anyio.to_thread.run_sync(lambda: func(**kwargs))
+            return await anyio.to_thread.run_sync(lambda: func(_request_timeout=deadline, **kwargs))
 
         return await resilient_call(attempt, policy=self._policy, breaker=self._breaker)
 

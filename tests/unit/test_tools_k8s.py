@@ -193,3 +193,34 @@ async def test_an_event_without_a_timestamp_is_kept(
     result = await get_events(EventsInput(namespace="ai-lab"), reader)
 
     assert [item.reason for item in result.events] == ["NoStamp"]
+
+
+class RecordingApi:
+    """Captures the keyword arguments the adapter passes to the client."""
+
+    def __init__(self) -> None:
+        self.kwargs: dict[str, Any] = {}
+
+    def list_namespaced_pod(self, **kwargs: Any) -> Any:
+        self.kwargs = kwargs
+
+        class Response:
+            items: list[Any] = []
+
+        return Response()
+
+
+@pytest.mark.asyncio
+async def test_the_blocking_client_call_carries_its_own_deadline() -> None:
+    # asyncio's timeout cancels the await, not the worker thread. Without this
+    # the thread stays parked on a socket after the tool has given up, which is
+    # what happened the first time the cluster went unreachable mid-run.
+    from opsagent.resilience import RetryPolicy
+    from opsagent.tools.k8s import OfficialClientReader
+
+    api = RecordingApi()
+    reader = OfficialClientReader(api, None, policy=RetryPolicy(attempts=1, timeout=7.0))
+
+    await reader.list_pods("ai-lab", None)
+
+    assert api.kwargs["_request_timeout"] == 7.0

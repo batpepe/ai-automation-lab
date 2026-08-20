@@ -45,6 +45,17 @@ triggered run scans the full history instead and passed cleanly across all 12
 commits. Every push after the first works normally, so the red run in the
 Actions history is that one-off and not a finding.
 
+### A synchronous client in a thread needs its own deadline
+Measured on 2026-08-20, when the Tailscale link to the cluster dropped during a
+live tool run. `asyncio.timeout` cancels the awaiting task but cannot cancel the
+worker thread underneath it, so the official Kubernetes client stayed parked on
+a socket and the run hung well past its 15 second budget.
+
+`OfficialClientReader` now passes `_request_timeout` into every client call, so
+the blocking layer has the same deadline as the async one, and
+`tests/unit/test_tools_k8s.py` pins it. The same applies to any future
+synchronous dependency wrapped in `anyio.to_thread`.
+
 ## Platform facts this project builds on
 
 Read from `devops-homelab-k3s-hybrid-cloud` at main on 2026-08-20, not from a
